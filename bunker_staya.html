@@ -1,0 +1,2118 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>БУНКЕР СТАИ</title>
+<style>
+  :root {
+    --bg: #0a0c0a; --panel: #1a1d16; --panel-2: #23271d;
+    --khaki: #8a8a52; --khaki-dim: #6b6b3f;
+    --scarlet: #a01c1c; --scarlet-bright: #d42020;
+    --text: #d4d6c8; --muted: #7a7d6a; --border: #33362b;
+    --mono: 'Courier New', monospace;
+    --success: #4caf50; --warn: #c9a227;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6; min-height: 100vh;
+  }
+
+  /* ==================== АВТОРИЗАЦИЯ ==================== */
+  #authScreen {
+    position: fixed; inset: 0;
+    display: flex; justify-content: center; align-items: center;
+    background: radial-gradient(circle at 50% 30%, #1a1d16 0%, #0a0c0a 100%);
+    z-index: 1000; padding: 1rem;
+  }
+  .auth-box {
+    background: var(--panel); border: 2px solid var(--khaki-dim);
+    max-width: 480px; width: 100%; padding: 2.5rem;
+    position: relative;
+  }
+  .auth-box::before {
+    content: 'ЛИЧНОЕ ДЕЛО'; position: absolute;
+    top: -0.7rem; left: 50%; transform: translateX(-50%);
+    background: var(--bg); padding: 0 1rem;
+    font-family: var(--mono); font-size: 0.75rem;
+    color: var(--scarlet); letter-spacing: 4px;
+  }
+  .auth-box h1 {
+    font-family: var(--mono); color: var(--khaki);
+    text-align: center; letter-spacing: 3px;
+    margin-bottom: 1.5rem; font-size: 1.4rem;
+  }
+  .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .auth-tabs button {
+    flex: 1; padding: 0.6rem;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono);
+    font-size: 0.8rem; letter-spacing: 1px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .auth-tabs button.active {
+    background: var(--scarlet); color: #fff; border-color: var(--scarlet);
+  }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label {
+    display: block; font-family: var(--mono);
+    font-size: 0.75rem; color: var(--khaki-dim);
+    letter-spacing: 1px; margin-bottom: 0.4rem;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 0.7rem 0.9rem;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 0.9rem;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--khaki);
+  }
+  .faction-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .faction-picker label {
+    border: 1px solid var(--border); padding: 0.7rem;
+    cursor: pointer; text-align: center;
+    font-size: 0.85rem; color: var(--muted);
+    transition: all 0.2s;
+  }
+  .faction-picker input { display: none; }
+  .faction-picker input:checked + label {
+    background: var(--khaki-dim); color: #fff; border-color: var(--khaki);
+  }
+  .btn {
+    width: 100%; padding: 0.9rem;
+    background: var(--scarlet); color: #fff;
+    border: none; font-family: var(--mono);
+    letter-spacing: 2px; font-size: 0.9rem;
+    cursor: pointer; transition: background 0.2s;
+    margin-top: 0.5rem;
+  }
+  .btn:hover { background: var(--scarlet-bright); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error-msg {
+    color: var(--scarlet); font-size: 0.8rem;
+    font-family: var(--mono); margin-top: 0.5rem;
+    min-height: 1.2rem;
+  }
+  .hint {
+    font-size: 0.75rem; color: var(--muted);
+    text-align: center; margin-top: 1rem;
+    font-family: var(--mono);
+  }
+
+  /* ==================== ПРИЛОЖЕНИЕ ==================== */
+  #appScreen { display: none; }
+  #appScreen.active { display: block; }
+
+  .topbar {
+    background: var(--panel-2); border-bottom: 2px solid var(--khaki-dim);
+    padding: 0.8rem 1.5rem;
+    display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 1rem;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar .logo {
+    font-family: var(--mono); color: var(--khaki);
+    letter-spacing: 3px; font-size: 1.1rem;
+  }
+  .topbar .logo span { color: var(--scarlet); }
+
+  .user-panel {
+    display: flex; align-items: center; gap: 1rem;
+    font-family: var(--mono); font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+  .rank-badge { display: flex; flex-direction: column; align-items: flex-end; }
+  .rank-badge .rank-name { color: var(--khaki); font-size: 0.8rem; }
+  .rank-badge .callsign { color: var(--scarlet); font-size: 1rem; letter-spacing: 1px; }
+  .xp-bar-wrap {
+    width: 140px; height: 8px;
+    background: var(--panel); border: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .xp-bar {
+    height: 100%; background: linear-gradient(90deg, var(--khaki-dim), var(--khaki));
+    transition: width 0.5s;
+  }
+  .xp-text { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; text-align: right; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--scarlet);
+    color: var(--scarlet); padding: 0.4rem 0.8rem;
+    font-family: var(--mono); font-size: 0.75rem;
+    cursor: pointer; letter-spacing: 1px;
+  }
+  .logout-btn:hover { background: var(--scarlet); color: #fff; }
+  .admin-badge {
+    background: var(--scarlet); color: #fff;
+    padding: 0.2rem 0.5rem; font-size: 0.65rem;
+    letter-spacing: 2px;
+  }
+
+  /* ==================== КОНТЕНТ ==================== */
+  .content { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h2 {
+    font-family: var(--mono); color: var(--khaki);
+    letter-spacing: 2px; border-left: 4px solid var(--scarlet);
+    padding-left: 1rem; margin-bottom: 1.5rem;
+  }
+
+  .tabs {
+    display: flex; gap: 0.3rem; flex-wrap: wrap;
+    margin-bottom: 2rem; border-bottom: 1px solid var(--border);
+  }
+  .tabs button {
+    background: transparent; border: none;
+    color: var(--muted); padding: 0.7rem 1.1rem;
+    font-family: var(--mono); font-size: 0.85rem;
+    letter-spacing: 1px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tabs button:hover { color: var(--khaki); }
+  .tabs button.active {
+    color: var(--khaki); border-bottom-color: var(--scarlet);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fade 0.3s; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .mini-card {
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 1rem; transition: all 0.25s;
+  }
+  .mini-card:hover { border-color: var(--khaki); }
+  .mini-card h3 { color: var(--khaki); font-size: 1rem; margin-bottom: 0.4rem; }
+  .mini-card p { font-size: 0.85rem; color: var(--muted); }
+
+  /* ==================== ФИЛЬТРЫ ==================== */
+  .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .filters button {
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--muted); padding: 0.4rem 0.9rem;
+    font-family: var(--mono); font-size: 0.8rem;
+    letter-spacing: 1px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filters button:hover,
+  .filters button.active {
+    background: var(--khaki-dim); color: #fff; border-color: var(--khaki);
+  }
+  .filters input {
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); padding: 0.4rem 0.9rem;
+    font-family: var(--mono); font-size: 0.8rem;
+    min-width: 200px;
+  }
+  .filters input:focus { outline: none; border-color: var(--khaki); }
+
+  /* ==================== БОЙЦЫ ==================== */
+  .fighter-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-top: 3px solid var(--khaki-dim);
+    padding: 1.2rem; cursor: pointer;
+    transition: all 0.3s; position: relative;
+  }
+  .fighter-card:hover {
+    border-top-color: var(--scarlet);
+    transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(160,28,28,0.3);
+  }
+  .fighter-card .callsign {
+    font-family: var(--mono); color: var(--scarlet);
+    font-size: 1rem; letter-spacing: 2px;
+  }
+  .fighter-card .name { color: var(--khaki); font-size: 1.05rem; margin: 0.2rem 0 0.5rem; }
+  .fighter-card .rank {
+    font-family: var(--mono); font-size: 0.75rem;
+    color: var(--muted); letter-spacing: 1px;
+  }
+  .fighter-card .spec {
+    font-size: 0.85rem; margin-top: 0.5rem;
+    padding-top: 0.5rem; border-top: 1px dashed var(--border);
+  }
+  .fighter-card .faction-badge {
+    position: absolute; top: 0.6rem; right: 0.6rem;
+    font-family: var(--mono); font-size: 0.65rem;
+    color: var(--bg); background: var(--khaki);
+    padding: 0.15rem 0.5rem; letter-spacing: 1px;
+  }
+
+  /* ==================== ХРОНОЛОГИЯ ==================== */
+  .chrono-list { list-style: none; }
+  .chrono-list li {
+    background: var(--panel); border-left: 3px solid var(--khaki-dim);
+    padding: 0.9rem 1.2rem; margin-bottom: 0.6rem;
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 1rem;
+    transition: all 0.25s; font-size: 0.95rem;
+  }
+  .chrono-list li:hover {
+    border-left-color: var(--scarlet); background: var(--panel-2);
+  }
+  .chrono-list li .type {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ==================== АРСЕНАЛ ==================== */
+  .weapon-card {
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 1.2rem; transition: all 0.3s;
+  }
+  .weapon-card:hover {
+    border-color: var(--khaki);
+    box-shadow: 0 0 15px rgba(138,138,82,0.2);
+  }
+  .weapon-card .cat {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--scarlet); letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .weapon-card h3 { color: var(--khaki); margin: 0.3rem 0 0.5rem; font-size: 1.05rem; }
+  .weapon-card p { font-size: 0.85rem; color: var(--muted); }
+  .weapon-card .owner {
+    margin-top: 0.8rem; padding-top: 0.5rem;
+    border-top: 1px dashed var(--border);
+    font-family: var(--mono); font-size: 0.75rem;
+    color: var(--khaki-dim);
+  }
+
+  /* ==================== ОПЕРАЦИИ ==================== */
+  .op-card {
+    display: grid; grid-template-columns: 140px 1fr auto;
+    gap: 1rem; align-items: center;
+    background: var(--panel-2); border-left: 3px solid var(--khaki);
+    padding: 1rem; margin-bottom: 0.8rem;
+    transition: all 0.3s;
+  }
+  .op-card:hover { border-left-color: var(--scarlet); }
+  .op-card .region {
+    font-family: var(--mono); color: var(--khaki);
+    font-size: 0.9rem; letter-spacing: 2px;
+  }
+  .op-card .desc { font-size: 0.9rem; }
+  .op-card .status {
+    font-family: var(--mono); font-size: 0.7rem;
+    padding: 0.3rem 0.7rem; border: 1px solid;
+    letter-spacing: 1px;
+  }
+  .status.success { color: var(--success); border-color: var(--success); }
+  .status.warn { color: var(--warn); border-color: var(--warn); }
+  .status.danger { color: var(--scarlet); border-color: var(--scarlet); }
+
+  /* ==================== МЕССЕНДЖЕР ==================== */
+  .messenger {
+    display: grid; grid-template-columns: 280px 1fr;
+    gap: 1rem; height: 600px;
+    background: var(--panel); border: 1px solid var(--border);
+  }
+  .chat-list {
+    border-right: 1px solid var(--border);
+    overflow-y: auto; background: var(--panel-2);
+  }
+  .chat-item {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.2s;
+  }
+  .chat-item:hover { background: var(--panel); }
+  .chat-item.active {
+    background: var(--panel); border-left: 3px solid var(--scarlet);
+  }
+  .chat-item .chat-name {
+    font-family: var(--mono); color: var(--khaki);
+    font-size: 0.9rem; letter-spacing: 1px;
+  }
+  .chat-item .chat-preview {
+    font-size: 0.75rem; color: var(--muted);
+    margin-top: 0.2rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chat-window { display: flex; flex-direction: column; }
+  .chat-header {
+    padding: 0.8rem 1rem; background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); color: var(--khaki);
+    letter-spacing: 2px; font-size: 0.9rem;
+  }
+  .chat-body {
+    flex: 1; padding: 1rem; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .msg {
+    max-width: 75%; padding: 0.6rem 0.9rem;
+    font-size: 0.9rem; border-radius: 4px;
+  }
+  .msg .author {
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--scarlet); letter-spacing: 1px;
+    display: block; margin-bottom: 0.2rem;
+  }
+  .msg.in {
+    background: var(--panel-2);
+    border-left: 3px solid var(--khaki-dim);
+    align-self: flex-start;
+  }
+  .msg.out {
+    background: var(--scarlet); align-self: flex-end;
+    border-right: 3px solid var(--scarlet-bright);
+  }
+  .msg.out .author { color: #ffd0d0; }
+  .chat-input { display: flex; border-top: 1px solid var(--border); }
+  .chat-input input {
+    flex: 1; background: var(--panel-2); border: none;
+    padding: 0.9rem 1rem; color: var(--text);
+    font-family: var(--mono); font-size: 0.85rem;
+  }
+  .chat-input input:focus { outline: none; }
+  .chat-input button {
+    background: var(--scarlet); color: #fff; border: none;
+    padding: 0 1.5rem; cursor: pointer;
+    font-family: var(--mono); letter-spacing: 1px;
+  }
+  .chat-input button:hover { background: var(--scarlet-bright); }
+
+  /* ==================== МОДАЛКА ==================== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none; justify-content: center; align-items: center;
+    z-index: 500; padding: 2rem;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--panel); border: 2px solid var(--khaki);
+    max-width: 700px; width: 100%; padding: 2rem;
+    position: relative; max-height: 90vh; overflow-y: auto;
+  }
+  .modal::before {
+    content: 'ЗАСЕКРЕЧЕНО'; position: absolute;
+    top: -0.6rem; left: 50%; transform: translateX(-50%);
+    background: var(--bg); padding: 0 1rem;
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--scarlet); letter-spacing: 4px;
+  }
+  .modal h2 {
+    border: none; margin-top: 0; color: var(--khaki);
+    padding: 0; border-left: none;
+  }
+  .modal .close-btn {
+    position: absolute; top: 0.5rem; right: 0.8rem;
+    background: none; border: none; color: var(--muted);
+    font-size: 1.5rem; cursor: pointer;
+  }
+  .modal .close-btn:hover { color: var(--scarlet); }
+
+  /* ==================== МИНИ-ИГРА ==================== */
+  .game-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  }
+  #gameCanvas {
+    background: #0d1410;
+    border: 2px solid var(--khaki-dim);
+    cursor: crosshair;
+    max-width: 100%;
+  }
+  .game-info {
+    display: flex; justify-content: space-between;
+    width: 100%; font-family: var(--mono);
+    font-size: 0.9rem; color: var(--khaki);
+  }
+  .game-info span { color: var(--scarlet); }
+  .game-result {
+    text-align: center; padding: 1rem;
+    border: 1px dashed var(--khaki);
+    font-family: var(--mono); margin-top: 1rem;
+  }
+
+  /* ==================== СВЯЗИ ==================== */
+  #graphCanvas {
+    background: #0d1410;
+    border: 1px solid var(--border);
+    width: 100%; max-width: 100%;
+  }
+  .legend {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-top: 1rem; font-family: var(--mono); font-size: 0.8rem;
+  }
+  .legend div { display: flex; align-items: center; gap: 0.4rem; }
+  .legend .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ==================== АДМИНКА ==================== */
+  .admin-table {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: 0.85rem;
+    margin-top: 1rem;
+  }
+  .admin-table th, .admin-table td {
+    text-align: left; padding: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .admin-table th {
+    color: var(--khaki-dim); font-size: 0.75rem;
+    letter-spacing: 1px;
+  }
+  .admin-table input, .admin-table select {
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.4rem;
+    font-family: var(--mono); font-size: 0.8rem;
+    width: 100%;
+  }
+  .admin-actions button {
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.3rem 0.7rem;
+    font-size: 0.75rem; cursor: pointer;
+    font-family: var(--mono);
+  }
+  .admin-actions button:hover { border-color: var(--khaki); color: var(--khaki); }
+  .admin-actions button.danger { color: var(--scarlet); border-color: var(--scarlet); }
+
+  /* ==================== ТОСТ ==================== */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--panel); border-left: 4px solid var(--khaki);
+    padding: 1rem 1.5rem; font-family: var(--mono);
+    font-size: 0.85rem; color: var(--text);
+    transform: translateX(120%); transition: transform 0.4s;
+    z-index: 2000; max-width: 320px;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--scarlet); }
+</style>
+</head>
+<body>
+
+<!-- ================== АВТОРИЗАЦИЯ ================== -->
+<div id="authScreen">
+  <div class="auth-box">
+    <h1>БУНКЕР СТАИ</h1>
+
+    <div class="auth-tabs">
+      <button data-auth="login" class="active">Вход</button>
+      <button data-auth="register">Регистрация</button>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>ПОЗЫВНОЙ</label>
+        <input type="text" name="callsign" required>
+      </div>
+      <div class="form-group">
+        <label>ПАРОЛЬ</label>
+        <input type="password" name="password" required>
+      </div>
+      <button type="submit" class="btn">ВОЙТИ В БУНКЕР</button>
+      <div class="error-msg" id="loginError"></div>
+    </form>
+
+    <form id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>ПОЗЫВНОЙ (уникальный)</label>
+        <input type="text" name="callsign" required maxlength="20" placeholder="Например: Волк">
+      </div>
+      <div class="form-group">
+        <label>ПАРОЛЬ (мин. 6 символов)</label>
+        <input type="password" name="password" required minlength="6">
+      </div>
+      <div class="form-group">
+        <label>ПОДРАЗДЕЛЕНИЕ</label>
+        <div class="faction-picker">
+          <input type="radio" name="faction" id="f-staya" value="staya" checked>
+          <label for="f-staya">Стая</label>
+          <input type="radio" name="faction" id="f-barsy" value="barsy">
+          <label for="f-barsy">Барсы</label>
+          <input type="radio" name="faction" id="f-kuzbass" value="kuzbass">
+          <label for="f-kuzbass">Кузбасс</label>
+          <input type="radio" name="faction" id="f-sultany" value="sultany">
+          <label for="f-sultany">Султаны</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ПАРОЛЬ АДМИНА (опционально)</label>
+        <input type="password" name="adminKey" placeholder="Оставьте пустым, если вы боец">
+      </div>
+      <button type="submit" class="btn">ЗАЧИСЛИТЬ В ОТРЯД</button>
+      <div class="error-msg" id="registerError"></div>
+      <div class="hint">Регистрируясь, вы даёте согласие на обработку данных</div>
+    </form>
+  </div>
+</div>
+
+<!-- ================== ПРИЛОЖЕНИЕ ================== -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="logo">БУНКЕР СТА<span>И</span></div>
+    <div class="user-panel">
+      <div class="rank-badge">
+        <div class="rank-name" id="uiRank">Рядовой</div>
+        <div class="callsign" id="uiCallsign">—</div>
+      </div>
+      <div>
+        <div class="xp-bar-wrap"><div class="xp-bar" id="uiXpBar"></div></div>
+        <div class="xp-text" id="uiXpText">0 / 200 XP</div>
+      </div>
+      <div id="uiAdminBadge"></div>
+      <button class="logout-btn" id="logoutBtn">ВЫЙТИ</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tabs">
+      <button data-tab="hq" class="active">Штаб</button>
+      <button data-tab="roster">Личный состав</button>
+      <button data-tab="ops">Операции</button>
+      <button data-tab="chrono">Хронология</button>
+      <button data-tab="arsenal">Арсенал</button>
+      <button data-tab="messenger">Мессенджер</button>
+      <button data-tab="trials">Испытания</button>
+      <button data-tab="graph">Связи</button>
+      <button data-tab="profile">Личное дело</button>
+      <button data-tab="admin" id="adminTabBtn" style="display:none; color: var(--scarlet)">АДМИН-ПАНЕЛЬ</button>
+    </div>
+
+    <!-- ШТАБ -->
+    <div class="tab-panel active" id="tab-hq">
+      <h2>Штаб отряда</h2>
+      <div class="card-grid">
+        <div class="mini-card">
+          <h3>Оперативная сводка</h3>
+          <p>Дивизия им. Судоплатова продолжает подготовку нового поколения бойцов.</p>
+        </div>
+        <div class="mini-card">
+          <h3>Статус базы</h3>
+          <p>Все системы работают в штатном режиме. Защищённый канал активен.</p>
+        </div>
+        <div class="mini-card">
+          <h3>Бойцов в базе</h3>
+          <p id="hqUsersCount">0</p>
+        </div>
+        <div class="mini-card">
+          <h3>Операций в архиве</h3>
+          <p id="hqOpsCount">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЛИЧНЫЙ СОСТАВ -->
+    <div class="tab-panel" id="tab-roster">
+      <h2>Личный состав</h2>
+      <div class="filters" id="rosterFilters">
+        <button data-faction="all" class="active">Все</button>
+        <button data-faction="Стая">Стая</button>
+        <button data-faction="Барсы">Барсы</button>
+        <button data-faction="Кузбасс">Кузбасс</button>
+        <button data-faction="Султаны">Султаны</button>
+        <button data-faction="Пандора">Пандора</button>
+      </div>
+      <div class="card-grid" id="rosterGrid"></div>
+    </div>
+
+    <!-- ОПЕРАЦИИ -->
+    <div class="tab-panel" id="tab-ops">
+      <h2>Операции отряда</h2>
+      <div id="opsList"></div>
+    </div>
+
+    <!-- ХРОНОЛОГИЯ -->
+    <div class="tab-panel" id="tab-chrono">
+      <h2>Хронология серии</h2>
+      <div class="filters">
+        <select id="chronoType" style="background:var(--panel); border:1px solid var(--border); color:var(--text); padding:0.4rem 0.9rem; font-family:var(--mono); font-size:0.8rem;">
+          <option value="all">Все типы</option>
+          <option value="book">Книги</option>
+          <option value="story">Рассказы</option>
+          <option value="spin">Спин-оффы</option>
+        </select>
+        <input type="text" id="chronoSearch" placeholder="Поиск по названию...">
+      </div>
+      <ul class="chrono-list" id="chronoList"></ul>
+    </div>
+
+    <!-- АРСЕНАЛ -->
+    <div class="tab-panel" id="tab-arsenal">
+      <h2>Арсенал отряда</h2>
+      <div class="filters" id="arsenalFilters">
+        <button data-cat="all" class="active">Всё</button>
+        <button data-cat="Снайперское">Снайперское</button>
+        <button data-cat="Штурмовое">Штурмовое</button>
+        <button data-cat="Пистолеты">Пистолеты</button>
+        <button data-cat="Спецсредства">Спецсредства</button>
+        <button data-cat="Техника">Техника</button>
+      </div>
+      <div class="card-grid" id="arsenalGrid"></div>
+    </div>
+
+    <!-- МЕССЕНДЖЕР -->
+    <div class="tab-panel" id="tab-messenger">
+      <h2>Закрытый канал связи</h2>
+      <div class="messenger">
+        <div class="chat-list" id="chatList"></div>
+        <div class="chat-window">
+          <div class="chat-header" id="chatHeader">Выберите канал</div>
+          <div class="chat-body" id="chatBody"></div>
+          <div class="chat-input">
+            <input type="text" id="msgInput" placeholder="Введите сообщение..." disabled>
+            <button id="sendBtn" disabled>ОТПРАВИТЬ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ИСПЫТАНИЯ -->
+    <div class="tab-panel" id="tab-trials">
+      <h2>Испытания</h2>
+      <div class="card-grid" id="trialsGrid"></div>
+    </div>
+
+    <!-- СВЯЗИ -->
+    <div class="tab-panel" id="tab-graph">
+      <h2>Граф связей персонажей</h2>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">
+        Наведите курсор на узел, чтобы увидеть детали. Перетаскивайте узлы мышью.
+      </p>
+      <canvas id="graphCanvas" width="1100" height="600"></canvas>
+      <div class="legend">
+        <div><span class="dot" style="background:#8a8a52"></span> Стая</div>
+        <div><span class="dot" style="background:#4caf50"></span> Барсы</div>
+        <div><span class="dot" style="background:#c9a227"></span> Кузбасс</div>
+        <div><span class="dot" style="background:#5b8db8"></span> Султаны</div>
+        <div><span class="dot" style="background:#a01c1c"></span> Пандора</div>
+        <div style="color:#ff6b6b">— романтика</div>
+        <div style="color:#4caf50">— дружба</div>
+        <div style="color:#a01c1c">— вражда</div>
+      </div>
+    </div>
+
+    <!-- ЛИЧНОЕ ДЕЛО -->
+    <div class="tab-panel" id="tab-profile">
+      <h2>Личное дело</h2>
+      <div class="card-grid">
+        <div class="mini-card"><h3>Позывной</h3><p id="p-callsign">—</p></div>
+        <div class="mini-card"><h3>Подразделение</h3><p id="p-faction">—</p></div>
+        <div class="mini-card"><h3>Звание</h3><p id="p-rank">Рядовой</p></div>
+        <div class="mini-card"><h3>Опыт (XP)</h3><p id="p-xp">0</p></div>
+        <div class="mini-card"><h3>Следующее звание</h3><p id="p-next">—</p></div>
+        <div class="mini-card"><h3>В отряде с</h3><p id="p-since">—</p></div>
+      </div>
+      <h2 style="margin-top:2rem">Достижения</h2>
+      <div class="card-grid" id="achievementsGrid"></div>
+    </div>
+
+    <!-- АДМИН-ПАНЕЛЬ -->
+    <div class="tab-panel" id="tab-admin">
+      <h2>Управление контентом</h2>
+
+      <div class="tabs" style="border:none; margin-bottom:1rem">
+        <button data-admin-tab="users" class="active">Пользователи</button>
+        <button data-admin-tab="content">Контент</button>
+        <button data-admin-tab="logs">Логи</button>
+      </div>
+
+      <div id="admin-users">
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem">
+          Здесь вы можете выдавать XP, менять звания и назначать админов.
+        </p>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Позывной</th><th>Подразделение</th><th>Звание</th>
+              <th>XP</th><th>Роль</th><th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersBody"></tbody>
+        </table>
+      </div>
+
+      <div id="admin-content" style="display:none">
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem">
+          Редактирование бойцов, книг, операций, оружия.
+        </p>
+        <div class="form-group">
+          <label>ТИП КОНТЕНТА</label>
+          <select id="contentType">
+            <option value="fighter">Боец</option>
+            <option value="book">Книга</option>
+            <option value="operation">Операция</option>
+            <option value="weapon">Оружие</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>НАЗВАНИЕ / ИМЯ</label>
+          <input type="text" id="contentTitle" placeholder="Например: Никита Иванов">
+        </div>
+        <div class="form-group">
+          <label>ОПИСАНИЕ (JSON или текст)</label>
+          <textarea id="contentData" rows="4" placeholder='{"callsign":"Головастый","rank":"Генерал-майор"}'></textarea>
+        </div>
+        <button class="btn" id="saveContentBtn" style="width:auto; padding:0.7rem 2rem">
+          СОХРАНИТЬ
+        </button>
+      </div>
+
+      <div id="admin-logs" style="display:none">
+        <ul id="logsList" style="list-style:none; font-family:var(--mono); font-size:0.8rem; color:var(--muted)"></ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- МОДАЛКА -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="close-btn" id="modalClose">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   КОНСТАНТЫ
+   ============================================================ */
+const ADMIN_KEY = 'STAYA-2026';
+
+const RANKS = [
+  { name: 'Рядовой',              xp: 0 },
+  { name: 'Ефрейтор',             xp: 200 },
+  { name: 'Младший сержант',      xp: 500 },
+  { name: 'Сержант',              xp: 1000 },
+  { name: 'Старший сержант',      xp: 1800 },
+  { name: 'Старшина',             xp: 3000 },
+  { name: 'Прапорщик',            xp: 4500 },
+  { name: 'Старший прапорщик',    xp: 6500 },
+  { name: 'Младший лейтенант',    xp: 9000 },
+  { name: 'Лейтенант',            xp: 12000 },
+  { name: 'Старший лейтенант',    xp: 16000 },
+  { name: 'Капитан',              xp: 21000 },
+  { name: 'Майор',                xp: 28000 },
+  { name: 'Подполковник',         xp: 36000 },
+  { name: 'Полковник',            xp: 46000 },
+  { name: 'Генерал-майор',        xp: 60000 }
+];
+
+const FACTIONS = {
+  staya:   'Стая',
+  barsy:   'Барсы',
+  kuzbass: 'Кузбасс',
+  sultany: 'Султаны'
+};
+
+const FACTION_COLORS = {
+  'Стая':     '#8a8a52',
+  'Барсы':    '#4caf50',
+  'Кузбасс':  '#c9a227',
+  'Султаны':  '#5b8db8',
+  'Пандора':  '#a01c1c'
+};
+
+/* ============================================================
+   БАЗА ПЕРСОНАЖЕЙ (для графа и ростера)
+   ============================================================ */
+const CHARACTERS = [
+  // Стая
+  { id: 'golovasty',  name: 'Никита Иванов',       callsign: 'Головастый', rank: 'Генерал-майор',       spec: 'Командир дивизии им. Судоплатова', faction: 'Стая' },
+  { id: 'cherny',     name: 'Кирилл Лямин',        callsign: 'Чёрный',     rank: 'Майор',               spec: 'Начальник штаба. Разведчик, водитель', faction: 'Стая' },
+  { id: 'otpetaya',   name: 'Александра Нестерова',callsign: 'Отпетая',    rank: 'Майор',               spec: 'Снайпер. Командир отряда Стая', faction: 'Стая' },
+  { id: 'arfa',       name: 'Ксения Стрельцова',   callsign: 'Арфа',       rank: 'Лейтенант',           spec: 'Юрисконсульт, аналитик', faction: 'Стая' },
+  { id: 'gordy',      name: 'Савелий Терентьев',   callsign: 'Гордый',     rank: 'Подполковник',        spec: 'Замком. Сапёр, тактик', faction: 'Стая' },
+  { id: 'fabula',     name: 'Светлана Полушина',   callsign: 'Фабула',     rank: 'Майор',               spec: 'Радиоэлектронный координатор', faction: 'Стая' },
+  { id: 'krasivaya',  name: 'Екатерина Егорова',   callsign: 'Красивая',   rank: 'Старший лейтенант',   spec: 'Медик, хирург', faction: 'Стая' },
+  { id: 'balkonnaya', name: 'Ксения Золотова',     callsign: 'Балконная',  rank: 'Лейтенант',           spec: 'Разведчик. Работа под прикрытием', faction: 'Стая' },
+  { id: 'mudraya',    name: 'Злата Мудрова',       callsign: 'Мудрая',     rank: 'Старший лейтенант',   spec: 'Диверсант, скалолаз', faction: 'Стая' },
+  { id: 'ket',        name: 'Анна Алешечкина',     callsign: 'Кэт',        rank: 'Старший прапорщик',   spec: 'Замком 2 взвода', faction: 'Стая' },
+  { id: 'borzy',      name: 'Фёдор Лямин',         callsign: 'Борзый',     rank: 'Старший сержант',     spec: 'Боец. Брат Кирилла', faction: 'Стая' },
+  { id: 'taksa',      name: 'Софья Михеева',       callsign: 'Такса',      rank: 'Лейтенант',           spec: 'Радиоэлектронный координатор', faction: 'Стая' },
+
+  // Барсы
+  { id: 'lesnik',     name: 'Роман Медведев',      callsign: 'Лесник',     rank: 'Подполковник',        spec: 'Командир Барсов', faction: 'Барсы' },
+  { id: 'akella',     name: 'Акелла',              callsign: 'Акелла',     rank: 'Старший лейтенант',   spec: 'Снайпер, разведчик (погиб)', faction: 'Барсы' },
+  { id: 'grigs',      name: 'Григс',               callsign: 'Григс',      rank: 'Капитан',             spec: 'Специалист по выживанию', faction: 'Барсы' },
+
+  // Кузбасс
+  { id: 'knyaz',      name: 'Дмитрий Сырский',     callsign: 'Князь',      rank: 'Майор',               spec: 'Командир отряда Кузбасс', faction: 'Кузбасс' },
+  { id: 'pers',       name: 'Михаил Маланин',      callsign: 'Перс',       rank: 'Капитан',             spec: 'Связист-подрывник', faction: 'Кузбасс' },
+  { id: 'hunter',     name: 'Анатолий Носов',      callsign: 'Хантер',     rank: 'Капитан',             spec: 'Подводный диверсант', faction: 'Кузбасс' },
+  { id: 'cirkach',    name: 'Егор Егошин',         callsign: 'Циркач',     rank: 'Капитан',             spec: 'Диверсант-скалолаз (погиб)', faction: 'Кузбасс' },
+
+  // Султаны
+  { id: 'mabuta',     name: 'Светлана Полушина',   callsign: 'Мабута',     rank: 'Сержант',             spec: 'Радиоэлектронная разведка', faction: 'Султаны' },
+  { id: 'hohmach',    name: 'Савелий Терентьев',   callsign: 'Хохмач',     rank: 'Младший сержант',     spec: 'Механик', faction: 'Султаны' },
+  { id: 'istorik',    name: 'Никита Иванов',       callsign: 'Историк',    rank: 'Капитан',             spec: 'Замком группы Султаны', faction: 'Султаны' },
+
+  // Пандора
+  { id: 'ono',        name: 'Тимур',               callsign: 'Оно',        rank: '—',                   spec: 'Стратег Пандоры', faction: 'Пандора' },
+  { id: 'star',       name: 'Диана',               callsign: 'Стар',       rank: '—',                   spec: 'Психолог-переговорщик', faction: 'Пандора' },
+  { id: 'kazanova',   name: 'Павел Жарков',        callsign: 'Казанова',   rank: '—',                   spec: 'Диверсионные операции', faction: 'Пандора' },
+  { id: 'aiz',        name: 'Айз',                 callsign: 'Айз',        rank: '—',                   spec: 'Снайпер-ас', faction: 'Пандора' },
+  { id: 'gekata',     name: 'Ирма',                callsign: 'Геката',     rank: '—',                   spec: 'Замдиректора Пандоры', faction: 'Пандора' }
+];
+
+/* ============================================================
+   СВЯЗИ МЕЖДУ ПЕРСОНАЖАМИ
+   ============================================================ */
+const LINKS = [
+  // Романтика
+  { a: 'golovasty',  b: 'arfa',       type: 'romance', label: 'муж/жена' },
+  { a: 'cherny',     b: 'balkonnaya', type: 'romance', label: 'пара' },
+  { a: 'cherny',     b: 'otpetaya',   type: 'romance', label: 'муж/жена' },
+  { a: 'golovasty',  b: 'otpetaya',   type: 'romance', label: 'бывшие' },
+  { a: 'gordy',      b: 'fabula',     type: 'romance', label: 'бывшие' },
+  { a: 'gordy',      b: 'mabuta',     type: 'romance', label: 'бывшие' },
+  { a: 'otpetaya',   b: 'kazanova',   type: 'romance', label: 'бывшие' },
+
+  // Дружба / подчинение
+  { a: 'golovasty',  b: 'gordy',      type: 'friend',  label: 'друзья' },
+  { a: 'golovasty',  b: 'cherny',     type: 'friend',  label: 'командир-подчинённый' },
+  { a: 'golovasty',  b: 'lesnik',     type: 'friend',  label: 'братья' },
+  { a: 'golovasty',  b: 'knyaz',      type: 'friend',  label: 'сослуживцы' },
+  { a: 'golovasty',  b: 'pers',       type: 'friend',  label: 'сослуживцы' },
+  { a: 'golovasty',  b: 'hunter',     type: 'friend',  label: 'сослуживцы' },
+  { a: 'cherny',     b: 'borzy',      type: 'friend',  label: 'братья' },
+  { a: 'otpetaya',   b: 'akella',     type: 'friend',  label: 'спасены' },
+  { a: 'otpetaya',   b: 'arfa',       type: 'friend',  label: 'подруги' },
+  { a: 'otpetaya',   b: 'cherny',     type: 'friend',  label: 'напарники' },
+  { a: 'otpetaya',   b: 'kazanova',   type: 'enemy',   label: 'предал' },
+  { a: 'golovasty',  b: 'kazanova',   type: 'enemy',   label: 'смертельные враги' },
+  { a: 'otpetaya',   b: 'aiz',        type: 'enemy',   label: 'снайперская дуэль' },
+  { a: 'gordy',      b: 'hohmach',    type: 'friend',  label: 'одно лицо' },
+
+  // Служебные
+  { a: 'arfa',       b: 'cherny',     type: 'friend',  label: 'сослуживцы' },
+  { a: 'krasivaya',  b: 'ket',        type: 'friend',  label: 'подруги' },
+  { a: 'mudraya',    b: 'balkonnaya', type: 'friend',  label: 'напарницы' },
+  { a: 'borzy',      b: 'ket',        type: 'friend',  label: 'курсанты' },
+  { a: 'lesnik',     b: 'akella',     type: 'friend',  label: 'братья по оружию' },
+  { a: 'ono',        b: 'star',       type: 'friend',  label: 'союзники' },
+  { a: 'ono',        b: 'kazanova',   type: 'friend',  label: 'союзники' },
+  { a: 'star',       b: 'kazanova',   type: 'friend',  label: 'союзники' },
+  { a: 'gekata',     b: 'kazanova',   type: 'enemy',   label: 'предали' }
+];
+
+const LINK_COLORS = {
+  romance: '#ff6b6b',
+  friend:  '#4caf50',
+  enemy:   '#a01c1c'
+};
+
+/* ============================================================
+   ОПЕРАЦИИ
+   ============================================================ */
+const OPS = [
+  { region: 'Кузбасс',   desc: 'Первое дело Никиты. Ликвидация бандформирований.', status: 'success', statusText: 'ВЫПОЛНЕНО' },
+  { region: 'Артём',     desc: 'Первая командировка Стаи. Получение флешки.', status: 'success', statusText: 'ВЫПОЛНЕНО' },
+  { region: 'Белоруссия',desc: 'Противодействие попытке госпереворота.', status: 'warn', statusText: 'ЧАСТИЧНО' },
+  { region: 'Карелия',   desc: 'Транспортировка блока "Воробей". Засада Пандоры.', status: 'danger', statusText: 'КРИТИЧНО' },
+  { region: 'Польша',    desc: 'Операция "Шантаж по-польски". Провал и плен.', status: 'danger', statusText: 'ПРОВАЛ' },
+  { region: 'Дагестан',  desc: 'Контртеррористическая операция в горах.', status: 'success', statusText: 'ВЫПОЛНЕНО' },
+  { region: 'Кавказ',    desc: 'Султаны: зачистка складов боевиков.', status: 'success', statusText: 'ВЫПОЛНЕНО' }
+];
+
+/* ============================================================
+   ХРОНОЛОГИЯ
+   ============================================================ */
+const CHRONO = [
+  { title: 'Кузбасс. Точка невозврата', type: 'book',  date: 'Приквел' },
+  { title: 'Султаны. Истоки Стаи',      type: 'book',  date: 'Приквел' },
+  { title: 'Отряд специального назначения "Стая"', type: 'book', date: 'Книга 1' },
+  { title: 'Стая 2. Закрыть Ящик Пандоры', type: 'book', date: 'Книга 2' },
+  { title: 'Стая 3. Ветер Перемен',     type: 'book',  date: 'Книга 3' },
+  { title: 'Стая 4. Шантаж по-польски', type: 'book',  date: 'Книга 4' },
+  { title: 'Стая 5. Пламя Смуты',       type: 'book',  date: 'Книга 5' },
+  { title: 'Стая. Школа 413',           type: 'book',  date: 'Книга 6' },
+  { title: 'Стая. Новая история',       type: 'book',  date: 'Книга 7' },
+  { title: 'Стая. Конец начала',        type: 'book',  date: 'Финал' },
+  { title: 'Стая. Истории. Цена славы', type: 'story', date: 'Рассказ' },
+  { title: 'Стая. Истории. Одинокий волк', type: 'story', date: 'Рассказ' },
+  { title: 'Стая. Истории. Любовь до гроба', type: 'story', date: 'Рассказ' },
+  { title: 'Стая. Истории. Командир',   type: 'story', date: 'Рассказ' },
+  { title: 'Отпетая. Операция "Мулен Руж"', type: 'spin', date: 'Спин-офф' },
+  { title: 'Лесник. Таёжные тайны',     type: 'spin',  date: 'Спин-офф' },
+  { title: 'ЧВК "Белая стрела"',        type: 'spin',  date: 'Спин-офф' },
+  { title: 'Стая. Мультивселенные',     type: 'spin',  date: 'Неканон' }
+];
+
+/* ============================================================
+   АРСЕНАЛ
+   ============================================================ */
+const ARSENAL = [
+  { cat: 'Снайперское',  name: 'ВСС "Винторез"', desc: 'Бесшумная снайперская винтовка.', owner: 'Головастый' },
+  { cat: 'Снайперское',  name: 'СВД',            desc: 'Снайперская винтовка Драгунова.', owner: 'Отпетая' },
+  { cat: 'Снайперское',  name: 'SR-25',          desc: 'Американская снайперская винтовка (трофей).', owner: 'Отпетая (трофей у Айз)' },
+  { cat: 'Штурмовое',    name: 'АК-103',         desc: 'Автомат Калашникова 103 модели.', owner: 'Гордый' },
+  { cat: 'Штурмовое',    name: 'АКСУ',           desc: 'Укороченный автомат Калашникова.', owner: 'Арфа' },
+  { cat: 'Штурмовое',    name: 'АК-74',          desc: 'Автомат Калашникова 74 модели.', owner: 'Чёрный' },
+  { cat: 'Пистолеты',    name: 'Glock 17',       desc: 'Австрийский пистолет.', owner: 'Головастый' },
+  { cat: 'Пистолеты',    name: 'Walter P99',     desc: 'Наградное оружие.', owner: 'Головастый' },
+  { cat: 'Пистолеты',    name: 'АПБ',            desc: 'Бесшумный пистолет Стечкина.', owner: 'Гордый' },
+  { cat: 'Пистолеты',    name: 'ПММ',            desc: 'Модернизированный пистолет Макарова.', owner: 'Фабула' },
+  { cat: 'Спецсредства', name: 'Нож "Рысь"',     desc: 'Складной боевой нож.', owner: 'Отпетая' },
+  { cat: 'Спецсредства', name: 'Кунай',          desc: 'Метательное оружие.', owner: 'Красивая' },
+  { cat: 'Спецсредства', name: 'Скрытые клинки', desc: 'Парные клинки для ближнего боя.', owner: 'Головастый' },
+  { cat: 'Техника',      name: 'БТР "Тигр"',     desc: 'Бронированный автомобиль.', owner: 'Чёрный' },
+  { cat: 'Техника',      name: 'УАЗ Патриот',    desc: 'Транспорт отряда.', owner: 'Отряд' },
+  { cat: 'Техника',      name: 'ИЖ "Пульсар"',   desc: 'Электрический мотоцикл.', owner: 'Отпетая' }
+];
+
+/* ============================================================
+   ИСПЫТАНИЯ
+   ============================================================ */
+const TRIALS = [
+  { id: 'sniper',  title: 'Снайперская дуэль',       desc: 'Отпетая против Айз. Порази цель точнее противника.', xp: 150 },
+  { id: 'quiz',    title: 'Тест на знание лора',     desc: 'Проверь, насколько хорошо ты знаешь вселенную.', xp: 100 },
+  { id: 'code',    title: 'Дешифровка (Арфа)',       desc: 'Взломай код Пандоры.', xp: 120 },
+  { id: 'tactic',  title: 'Тактическая головоломка', desc: 'Разработай план операции.', xp: 130 }
+];
+
+/* ============================================================
+   ХРАНИЛИЩЕ
+   ============================================================ */
+const Store = {
+  key: 'bunker_staya_v2',
+  load() {
+    try { return JSON.parse(localStorage.getItem(this.key)) || { users: [], content: [], logs: [], messages: {} }; }
+    catch { return { users: [], content: [], logs: [], messages: {} }; }
+  },
+  save(data) { localStorage.setItem(this.key, JSON.stringify(data)); },
+  getUsers() { return this.load().users; },
+  findUser(callsign) {
+    return this.getUsers().find(u => u.callsign.toLowerCase() === callsign.toLowerCase());
+  },
+  saveUser(user) {
+    const data = this.load();
+    const idx = data.users.findIndex(u => u.callsign === user.callsign);
+    if (idx >= 0) data.users[idx] = user;
+    else data.users.push(user);
+    this.save(data);
+  },
+  log(action, details) {
+    const data = this.load();
+    data.logs.unshift({
+      action, details,
+      user: currentUser?.callsign || 'system',
+      time: new Date().toISOString()
+    });
+    data.logs = data.logs.slice(0, 100);
+    this.save(data);
+  }
+};
+
+let currentUser = null;
+
+/* ============================================================
+   АВТОРИЗАЦИЯ
+   ============================================================ */
+document.querySelectorAll('.auth-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const isLogin = btn.dataset.auth === 'login';
+    document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+  });
+});
+
+document.getElementById('registerForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const callsign = fd.get('callsign').trim();
+  const password = fd.get('password');
+  const faction = fd.get('faction');
+  const adminKey = fd.get('adminKey').trim();
+
+  const errEl = document.getElementById('registerError');
+  errEl.textContent = '';
+
+  if (callsign.length < 3) return errEl.textContent = 'Позывной слишком короткий';
+  if (Store.findUser(callsign)) return errEl.textContent = 'Такой позывной уже занят';
+
+  const role = adminKey === ADMIN_KEY ? 'admin' : 'fighter';
+
+  const user = {
+    callsign, password, faction,
+    rankIndex: 0,
+    xp: role === 'admin' ? 1000 : 50,
+    role,
+    achievements: [],
+    tasksDone: [],
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  };
+
+  Store.saveUser(user);
+  Store.log('register', { callsign, faction, role });
+
+  login(user);
+  toast('Добро пожаловать в Бункер, ' + callsign, 'success');
+});
+
+document.getElementById('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const callsign = fd.get('callsign').trim();
+  const password = fd.get('password');
+
+  const user = Store.findUser(callsign);
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  if (!user) return errEl.textContent = 'Боец с таким позывным не найден';
+  if (user.password !== password) return errEl.textContent = 'Неверный пароль';
+
+  user.lastLogin = new Date().toISOString();
+  Store.saveUser(user);
+  login(user);
+  toast('С возвращением, ' + callsign, 'success');
+});
+
+function login(user) {
+  currentUser = user;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appScreen').classList.add('active');
+  refreshUI();
+  Store.log('login', { callsign: user.callsign });
+
+  const today = new Date().toDateString();
+  if (user.lastDaily !== today) {
+    user.lastDaily = today;
+    Store.saveUser(user);
+    addXP(20, 'Ежедневный вход');
+  }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  Store.log('logout', {});
+  currentUser = null;
+  location.reload();
+});
+
+/* ============================================================
+   UI
+   ============================================================ */
+function refreshUI() {
+  if (!currentUser) return;
+
+  const rank = RANKS[currentUser.rankIndex];
+  document.getElementById('uiRank').textContent = rank.name;
+  document.getElementById('uiCallsign').textContent = '"' + currentUser.callsign + '"';
+
+  const next = RANKS[currentUser.rankIndex + 1];
+  let pct = 100;
+  let xpText = 'MAX';
+  if (next) {
+    const prevXp = rank.xp;
+    const need = next.xp - prevXp;
+    const have = currentUser.xp - prevXp;
+    pct = Math.min(100, Math.max(0, (have / need) * 100));
+    xpText = currentUser.xp + ' / ' + next.xp + ' XP';
+  }
+  document.getElementById('uiXpBar').style.width = pct + '%';
+  document.getElementById('uiXpText').textContent = xpText;
+
+  const adminBadge = document.getElementById('uiAdminBadge');
+  const adminTab = document.getElementById('adminTabBtn');
+  if (currentUser.role === 'admin') {
+    adminBadge.innerHTML = '<span class="admin-badge">АДМИН</span>';
+    adminTab.style.display = 'inline-block';
+  } else {
+    adminBadge.innerHTML = '';
+    adminTab.style.display = 'none';
+  }
+
+  document.getElementById('p-callsign').textContent = '"' + currentUser.callsign + '"';
+  document.getElementById('p-faction').textContent = FACTIONS[currentUser.faction] || '—';
+  document.getElementById('p-rank').textContent = rank.name;
+  document.getElementById('p-xp').textContent = currentUser.xp;
+  document.getElementById('p-next').textContent = next ? next.name : 'МАКСИМУМ';
+  document.getElementById('p-since').textContent = new Date(currentUser.createdAt).toLocaleDateString('ru');
+
+  document.getElementById('hqUsersCount').textContent = Store.getUsers().length;
+  document.getElementById('hqOpsCount').textContent = OPS.length;
+
+  renderRoster();
+  renderOps();
+  renderChrono();
+  renderArsenal();
+  renderChats();
+  renderTrials();
+  renderAchievements();
+  renderGraph();
+  if (currentUser.role === 'admin') renderAdmin();
+}
+
+function addXP(amount, reason) {
+  if (!currentUser) return;
+  const oldRank = currentUser.rankIndex;
+  currentUser.xp += amount;
+
+  while (
+    currentUser.rankIndex < RANKS.length - 1 &&
+    currentUser.xp >= RANKS[currentUser.rankIndex + 1].xp
+  ) {
+    currentUser.rankIndex++;
+  }
+
+  Store.saveUser(currentUser);
+  Store.log('xp', { amount, reason, newXp: currentUser.xp });
+
+  if (currentUser.rankIndex > oldRank) {
+    toast('ПОВЫШЕНИЕ! Новое звание: ' + RANKS[currentUser.rankIndex].name, 'success');
+    const badge = 'rank_' + currentUser.rankIndex;
+    if (!currentUser.achievements.includes(badge)) {
+      currentUser.achievements.push(badge);
+      Store.saveUser(currentUser);
+    }
+  } else {
+    toast('+' + amount + ' XP — ' + reason, 'success');
+  }
+
+  refreshUI();
+}
+
+/* ============================================================
+   ВКЛАДКИ
+   ============================================================ */
+document.querySelectorAll('.tabs [data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'admin') renderAdmin();
+    if (btn.dataset.tab === 'graph') renderGraph();
+  });
+});
+
+/* ============================================================
+   ЛИЧНЫЙ СОСТАВ
+   ============================================================ */
+let currentFaction = 'all';
+
+function renderRoster() {
+  const grid = document.getElementById('rosterGrid');
+  const list = CHARACTERS.filter(f => currentFaction === 'all' || f.faction === currentFaction);
+  grid.innerHTML = list.map(f => `
+    <div class="fighter-card" data-id="${f.id}">
+      <span class="faction-badge" style="background:${FACTION_COLORS[f.faction]}">${f.faction}</span>
+      <div class="callsign">"${f.callsign}"</div>
+      <div class="name">${f.name}</div>
+      <div class="rank">${f.rank}</div>
+      <div class="spec">${f.spec}</div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.fighter-card').forEach(el => {
+    el.addEventListener('click', () => openFighterModal(el.dataset.id));
+  });
+}
+
+document.getElementById('rosterFilters').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#rosterFilters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFaction = btn.dataset.faction;
+  renderRoster();
+});
+
+function openFighterModal(id) {
+  const f = CHARACTERS.find(x => x.id === id);
+  if (!f) return;
+  addXP(5, 'Изучение досье: ' + f.callsign);
+  openModal(`
+    <h2>"${f.callsign}"</h2>
+    <p style="color:var(--khaki); font-size:1.1rem; margin-bottom:0.5rem">${f.name}</p>
+    <p style="font-family:var(--mono); font-size:0.8rem; color:var(--muted); margin-bottom:1rem">
+      ЗВАНИЕ: ${f.rank} // ФРАКЦИЯ: ${f.faction}
+    </p>
+    <p>${f.spec}</p>
+  `);
+}
+
+/* ============================================================
+   ОПЕРАЦИИ
+   ============================================================ */
+function renderOps() {
+  const list = document.getElementById('opsList');
+  list.innerHTML = OPS.map(o => `
+    <div class="op-card">
+      <div class="region">${o.region}</div>
+      <div class="desc">${o.desc}</div>
+      <div class="status ${o.status}">${o.statusText}</div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   ХРОНОЛОГИЯ
+   ============================================================ */
+function renderChrono() {
+  const type = document.getElementById('chronoType').value;
+  const q = document.getElementById('chronoSearch').value.toLowerCase();
+  const list = document.getElementById('chronoList');
+  const filtered = CHRONO.filter(c =>
+    (type === 'all' || c.type === type) &&
+    c.title.toLowerCase().includes(q)
+  );
+  list.innerHTML = filtered.map(c => `
+    <li>
+      <span>${c.title}</span>
+      <span class="type">${c.date}</span>
+    </li>
+  `).join('') || '<li style="color:var(--muted)">Ничего не найдено.</li>';
+}
+
+document.getElementById('chronoType').addEventListener('change', renderChrono);
+document.getElementById('chronoSearch').addEventListener('input', renderChrono);
+
+/* ============================================================
+   АРСЕНАЛ
+   ============================================================ */
+let currentArsenalCat = 'all';
+
+function renderArsenal() {
+  const grid = document.getElementById('arsenalGrid');
+  const list = ARSENAL.filter(w => currentArsenalCat === 'all' || w.cat === currentArsenalCat);
+  grid.innerHTML = list.map(w => `
+    <div class="weapon-card">
+      <div class="cat">${w.cat}</div>
+      <h3>${w.name}</h3>
+      <p>${w.desc}</p>
+      <div class="owner">ВЛАДЕЛЕЦ: ${w.owner}</div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('arsenalFilters').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#arsenalFilters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentArsenalCat = btn.dataset.cat;
+  renderArsenal();
+});
+
+/* ============================================================
+   МЕССЕНДЖЕР
+   ============================================================ */
+const CHATS = [
+  { id: 'staya',   name: 'СТАЯ // ОБЩИЙ',      preview: 'Головастый: Всем быть на связи.' },
+  { id: 'ops',     name: 'ОПЕРАЦИИ',           preview: 'Гордый: Ситуация под контролем.' },
+  { id: 'bunker',  name: 'БУНКЕР // ФЛУД',     preview: 'Чёрный: Кто кальян из калаша делал?' },
+  { id: 'barsy',   name: 'БАРСЫ',              preview: 'Лесник: На связи.' },
+  { id: 'pandora', name: 'ПАНДОРА // ПЕРЕХВАТ',preview: '[ЗАШИФРОВАНО]' }
+];
+
+let activeChat = null;
+
+function renderChats() {
+  const list = document.getElementById('chatList');
+  list.innerHTML = CHATS.map(c => `
+    <div class="chat-item" data-id="${c.id}">
+      <div class="chat-name">${c.name}</div>
+      <div class="chat-preview">${c.preview}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.chat-item').forEach(el => {
+    el.addEventListener('click', () => selectChat(el.dataset.id));
+  });
+}
+
+function selectChat(id) {
+  activeChat = id;
+  document.querySelectorAll('.chat-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+  const chat = CHATS.find(c => c.id === id);
+  document.getElementById('chatHeader').textContent = chat.name;
+  renderMessages();
+  document.getElementById('msgInput').disabled = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function renderMessages() {
+  const body = document.getElementById('chatBody');
+  const data = Store.load();
+  const msgs = (data.messages && data.messages[activeChat]) || [];
+  body.innerHTML = msgs.map(m => `
+    <div class="msg ${m.out ? 'out' : 'in'}">
+      <span class="author">${m.author}</span>
+      ${m.text}
+    </div>
+  `).join('');
+  body.scrollTop = body.scrollHeight;
+}
+
+document.getElementById('sendBtn').addEventListener('click', sendMsg);
+document.getElementById('msgInput').addEventListener('keypress', e => {
+  if (e.key === 'Enter') sendMsg();
+});
+
+function sendMsg() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || !activeChat) return;
+  const data = Store.load();
+  data.messages = data.messages || {};
+  data.messages[activeChat] = data.messages[activeChat] || [];
+  data.messages[activeChat].push({ author: currentUser.callsign, text, out: true });
+  Store.save(data);
+  input.value = '';
+  renderMessages();
+  addXP(2, 'Сообщение в чате');
+}
+
+/* ============================================================
+   ИСПЫТАНИЯ
+   ============================================================ */
+function renderTrials() {
+  const grid = document.getElementById('trialsGrid');
+  grid.innerHTML = TRIALS.map(t => `
+    <div class="mini-card">
+      <h3>${t.title}</h3>
+      <p>${t.desc}</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.8rem">
+        <span style="font-family:var(--mono); color:var(--khaki); font-size:0.8rem">+${t.xp} XP</span>
+        <button class="btn" style="width:auto; padding:0.4rem 1rem; font-size:0.75rem"
+                onclick="startTrial('${t.id}')">НАЧАТЬ</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.startTrial = function(id) {
+  if (id === 'sniper') startSniperGame();
+  else if (id === 'quiz') startQuiz();
+  else if (id === 'code') startCodeGame();
+  else if (id === 'tactic') startTacticGame();
+};
+
+/* ---------- Снайперская дуэль (canvas) ---------- */
+let sniperState = null;
+
+function startSniperGame() {
+  openModal(`
+    <h2>Снайперская дуэль</h2>
+    <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem">
+      Отпетая против Айз. Порази 5 мишеней быстрее, чем это сделает противник.
+      Кликай по красным мишеням. Промах - минус время.
+    </p>
+    <div class="game-wrap">
+      <div class="game-info">
+        <div>Твои очки: <span id="gScore">0</span> / 5</div>
+        <div>Очки Айз: <span id="gEnemy">0</span> / 5</div>
+        <div>Время: <span id="gTime">30</span> сек</div>
+      </div>
+      <canvas id="gameCanvas" width="600" height="380"></canvas>
+      <div id="gameResult" class="game-result" style="display:none"></div>
+    </div>
+  `);
+
+  sniperState = {
+    score: 0, enemy: 0,
+    timeLeft: 30,
+    targets: [],
+    running: true,
+    lastSpawn: 0,
+    spawnInterval: 700,
+    enemyInterval: 1100,
+    startTime: performance.now()
+  };
+
+  const canvas = document.getElementById('gameCanvas');
+  canvas.addEventListener('click', onCanvasClick);
+  requestAnimationFrame(sniperLoop);
+  setInterval(() => {
+    if (!sniperState || !sniperState.running) return;
+    sniperState.timeLeft--;
+    const el = document.getElementById('gTime');
+    if (el) el.textContent = sniperState.timeLeft;
+    if (sniperState.timeLeft <= 0) endSniperGame(false);
+  }, 1000);
+}
+
+function onCanvasClick(e) {
+  if (!sniperState || !sniperState.running) return;
+  const canvas = document.getElementById('gameCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  let hit = false;
+  for (let i = sniperState.targets.length - 1; i >= 0; i--) {
+    const t = sniperState.targets[i];
+    const dist = Math.hypot(t.x - x, t.y - y);
+    if (dist <= t.r) {
+      if (t.enemy) return; // нельзя стрелять по своим мишеням Айз
+      sniperState.targets.splice(i, 1);
+      sniperState.score++;
+      hit = true;
+      document.getElementById('gScore').textContent = sniperState.score;
+      if (sniperState.score >= 5) endSniperGame(true);
+      break;
+    }
+  }
+
+  if (!hit) {
+    sniperState.timeLeft = Math.max(0, sniperState.timeLeft - 2);
+    document.getElementById('gTime').textContent = sniperState.timeLeft;
+  }
+}
+
+function sniperLoop(now) {
+  if (!sniperState || !sniperState.running) return;
+  const canvas = document.getElementById('gameCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Фон
+  ctx.fillStyle = '#0d1410';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Сетка
+  ctx.strokeStyle = 'rgba(138,138,82,0.1)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  // Спавн мишеней
+  if (now - sniperState.lastSpawn > sniperState.spawnInterval) {
+    sniperState.lastSpawn = now;
+    sniperState.targets.push({
+      x: 50 + Math.random() * (canvas.width - 100),
+      y: 50 + Math.random() * (canvas.height - 100),
+      r: 20,
+      enemy: false,
+      born: now,
+      life: 2500
+    });
+  }
+
+  // ИИ противника
+  if (now % sniperState.enemyInterval < 20 && Math.random() < 0.2) {
+    sniperState.enemy++;
+    document.getElementById('gEnemy').textContent = sniperState.enemy;
+    if (sniperState.enemy >= 5) endSniperGame(false);
+  }
+
+  // Отрисовка мишеней
+  for (let i = sniperState.targets.length - 1; i >= 0; i--) {
+    const t = sniperState.targets[i];
+    if (now - t.born > t.life) { sniperState.targets.splice(i, 1); continue; }
+    const age = (now - t.born) / t.life;
+
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#d42020';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r * (1 - age), 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(212,32,32,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#d42020';
+    ctx.fill();
+  }
+
+  // Прицел
+  ctx.strokeStyle = 'rgba(201,162,39,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2, canvas.height / 2 - 15);
+  ctx.lineTo(canvas.width / 2, canvas.height / 2 + 15);
+  ctx.moveTo(canvas.width / 2 - 15, canvas.height / 2);
+  ctx.lineTo(canvas.width / 2 + 15, canvas.height / 2);
+  ctx.stroke();
+
+  if (sniperState.running) requestAnimationFrame(sniperLoop);
+}
+
+function endSniperGame(win) {
+  if (!sniperState) return;
+  sniperState.running = false;
+  const el = document.getElementById('gameResult');
+  if (!el) return;
+  el.style.display = 'block';
+  if (win) {
+    el.innerHTML = 'ПОБЕДА! Отпетая точнее.<br>+' + TRIALS[0].xp + ' XP';
+    addXP(TRIALS[0].xp, 'Победа в снайперской дуэли');
+    if (!currentUser.achievements.includes('trial_1')) {
+      currentUser.achievements.push('trial_1');
+      Store.saveUser(currentUser);
+    }
+  } else {
+    el.innerHTML = 'Поражение. Айз оказалась быстрее.<br>+30 XP за попытку';
+    addXP(30, 'Попытка в снайперской дуэли');
+  }
+}
+
+/* ---------- Тест на лор ---------- */
+const QUIZ = [
+  { q: 'Какой позывной у Никиты Иванова?', a: ['Гордый', 'Головастый', 'Отпетая', 'Чёрный'], correct: 1 },
+  { q: 'Кто командир отряда "Барсы"?', a: ['Акелла', 'Лесник', 'Гордый', 'Соловьёв'], correct: 1 },
+  { q: 'Какое звание у Кирилла Лямина в книге 7?', a: ['Лейтенант', 'Капитан', 'Майор', 'Подполковник'], correct: 2 },
+  { q: 'Как зовут бойца Пандоры, бывшего парня Отпетой?', a: ['Оно', 'Казанова', 'Стар', 'Айз'], correct: 1 },
+  { q: 'Что перевозила Стая в Карелии?', a: ['Флешку', 'Блок "Воробей"', 'Документы', 'Оружие'], correct: 1 },
+  { q: 'Кто такой Лесник по отношению к Головастому?', a: ['Друг', 'Брат', 'Враг', 'Командир'], correct: 1 },
+  { q: 'Где Стая попала в плен в книге 4?', a: ['В Белоруссии', 'В Польше', 'В Карелии', 'В Дагестане'], correct: 1 },
+  { q: 'Какой позывной у Светланы Полушиной в Стае?', a: ['Мабута', 'Фабула', 'Арфа', 'Кэт'], correct: 1 }
+];
+
+function startQuiz() {
+  openModal(`
+    <h2>Тест на знание лора</h2>
+    <div id="quizBody"></div>
+  `);
+  let idx = 0;
+  let score = 0;
+  renderQuiz();
+
+  function renderQuiz() {
+    const body = document.getElementById('quizBody');
+    if (idx >= QUIZ.length) {
+      const pct = Math.round((score / QUIZ.length) * 100);
+      let xp = 0;
+      if (pct === 100) xp = TRIALS[1].xp;
+      else if (pct >= 80) xp = 60;
+      else if (pct >= 50) xp = 30;
+      body.innerHTML = `
+        <p style="font-size:1.2rem; color:var(--khaki)">Результат: ${score} / ${QUIZ.length} (${pct}%)</p>
+        <p style="margin-top:1rem">Получено: <span style="color:var(--scarlet)">+${xp} XP</span></p>
+      `;
+      if (xp > 0) addXP(xp, 'Тест на знание лора');
+      return;
+    }
+    const q = QUIZ[idx];
+    body.innerHTML = `
+      <p style="color:var(--muted); font-size:0.8rem; font-family:var(--mono)">ВОПРОС ${idx + 1} / ${QUIZ.length}</p>
+      <p style="margin:1rem 0; color:var(--khaki)">${q.q}</p>
+      <div id="quizOptions"></div>
+    `;
+    const opts = document.getElementById('quizOptions');
+    q.a.forEach((a, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.marginBottom = '0.5rem';
+      btn.textContent = a;
+      btn.onclick = () => {
+        if (i === q.correct) score++;
+        idx++;
+        renderQuiz();
+      };
+      opts.appendChild(btn);
+    });
+  }
+}
+
+/* ---------- Дешифровка ---------- */
+function startCodeGame() {
+  const word = ['СТАЯ', 'БУНКЕР', 'ВОРОБЕЙ', 'ГОЛОВАСТЫЙ', 'ПАНДОРА', 'ОТПЕТАЯ'][Math.floor(Math.random() * 6)];
+  const shift = 3 + Math.floor(Math.random() * 5);
+  const encoded = word.split('').map(c => {
+    const code = c.charCodeAt(0) - 1040;
+    return String.fromCharCode(1040 + ((code + shift) % 32));
+  }).join('');
+
+  openModal(`
+    <h2>Дешифровка</h2>
+    <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem">
+      Арфа перехватила шифр Пандоры. Каждая буква сдвинута на <b>${shift}</b> позиций вперёд по алфавиту.
+    </p>
+    <p style="font-size:1.8rem; text-align:center; color:var(--scarlet); font-family:var(--mono); letter-spacing:5px; margin:1.5rem 0">
+      ${encoded}
+    </p>
+    <div class="form-group">
+      <label>ВАШ ОТВЕТ</label>
+      <input type="text" id="codeAnswer" placeholder="Введите расшифрованное слово">
+    </div>
+    <button class="btn" id="codeSubmit">ПРОВЕРИТЬ</button>
+    <div id="codeResult" class="error-msg"></div>
+  `);
+
+  document.getElementById('codeSubmit').onclick = () => {
+    const ans = document.getElementById('codeAnswer').value.trim().toUpperCase();
+    const res = document.getElementById('codeResult');
+    if (ans === word) {
+      res.style.color = 'var(--success)';
+      res.textContent = 'ВЕРНО! +' + TRIALS[2].xp + ' XP';
+      addXP(TRIALS[2].xp, 'Дешифровка');
+    } else {
+      res.style.color = 'var(--scarlet)';
+      res.textContent = 'Неверно. Правильный ответ: ' + word;
+      addXP(20, 'Попытка дешифровки');
+    }
+  };
+}
+
+/* ---------- Тактическая головоломка ---------- */
+function startTacticGame() {
+  const scenarios = [
+    {
+      q: 'Противник засел в здании с заложником. У вас 4 бойца. Как действовать?',
+      a: [
+        { t: 'Штурм в лоб', ok: false, why: 'Слишком рискованно для заложника.' },
+        { t: 'Отправить снайпера на позицию, остальных разделить на две группы', ok: true, why: 'Классическая тактика.' },
+        { t: 'Ждать подкрепления', ok: false, why: 'Время работает против заложника.' }
+      ]
+    },
+    {
+      q: 'Вы в засаде, противник превосходит численно в 5 раз. Что делать?',
+      a: [
+        { t: 'Принять бой', ok: false, why: 'Потери неизбежны.' },
+        { t: 'Отступить, вызвать поддержку', ok: true, why: 'Сохранить людей важнее.' },
+        { t: 'Прорываться в центр', ok: false, why: 'Самоубийство.' }
+      ]
+    }
+  ];
+  const s = scenarios[Math.floor(Math.random() * scenarios.length)];
+
+  openModal(`
+    <h2>Тактическая головоломка</h2>
+    <p style="color:var(--khaki); margin:1rem 0">${s.q}</p>
+    <div id="tacticOptions"></div>
+    <div id="tacticResult" class="game-result" style="display:none; margin-top:1rem"></div>
+  `);
+
+  const opts = document.getElementById('tacticOptions');
+  s.a.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.marginBottom = '0.5rem';
+    btn.textContent = opt.t;
+    btn.onclick = () => {
+      document.querySelectorAll('#tacticOptions button').forEach(b => b.disabled = true);
+      const res = document.getElementById('tacticResult');
+      res.style.display = 'block';
+      res.innerHTML = opt.why;
+      if (opt.ok) {
+        res.style.borderColor = 'var(--success)';
+        addXP(TRIALS[3].xp, 'Тактическая головоломка');
+      } else {
+        res.style.borderColor = 'var(--scarlet)';
+        addXP(15, 'Попытка тактической головоломки');
+      }
+    };
+    opts.appendChild(btn);
+  });
+}
+
+/* ============================================================
+   ДОСТИЖЕНИЯ
+   ============================================================ */
+function renderAchievements() {
+  if (!currentUser) return;
+  const grid = document.getElementById('achievementsGrid');
+  const ach = [
+    { id: 'rank_1',   title: 'Первое звание',    desc: 'Достигнуть Ефрейтора' },
+    { id: 'rank_5',   title: 'Старшина',         desc: 'Достигнуть Старшины' },
+    { id: 'rank_8',   title: 'Офицер',           desc: 'Достигнуть Младшего лейтенанта' },
+    { id: 'trial_1',  title: 'Испытанный',       desc: 'Победить в снайперской дуэли' },
+    { id: 'social',   title: 'Свой в доску',     desc: 'Написать 10 сообщений' }
+  ];
+  grid.innerHTML = ach.map(a => {
+    const has = currentUser.achievements.includes(a.id);
+    return `
+      <div class="mini-card" style="opacity:${has ? 1 : 0.35}">
+        <h3>${a.title}</h3>
+        <p>${a.desc}</p>
+        <p style="font-family:var(--mono); font-size:0.75rem; margin-top:0.5rem; color:${has ? 'var(--success)' : 'var(--muted)'}">
+          ${has ? 'ПОЛУЧЕНО' : 'ЗАБЛОКИРОВАНО'}
+        </p>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   ГРАФ СВЯЗЕЙ
+   ============================================================ */
+let graphState = null;
+let graphAnim = null;
+
+function renderGraph() {
+  const canvas = document.getElementById('graphCanvas');
+  if (!canvas) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== rect.width * dpr) {
+    canvas.width = rect.width * dpr;
+    canvas.height = 600 * dpr;
+    canvas.style.height = '600px';
+  }
+
+  // Позиционирование узлов по кругу + фракции группируем
+  const factions = ['Стая', 'Барсы', 'Кузбасс', 'Султаны', 'Пандора'];
+  const nodes = CHARACTERS.map(c => {
+    const factionIdx = factions.indexOf(c.faction);
+    const angle = (factionIdx / factions.length) * Math.PI * 2;
+    const radius = 180;
+    const cx = rect.width / 2;
+    const cy = 300;
+    // Случайный сдвиг внутри кластера
+    const jitter = () => (Math.random() - 0.5) * 120;
+    return {
+      ...c,
+      x: cx + Math.cos(angle) * radius + jitter(),
+      y: cy + Math.sin(angle) * radius + jitter(),
+      vx: 0, vy: 0,
+      r: 12
+    };
+  });
+
+  graphState = {
+    canvas, ctx: canvas.getContext('2d'),
+    nodes, dpr,
+    width: rect.width, height: 600,
+    dragging: null,
+    hover: null,
+    offsetX: 0, offsetY: 0
+  };
+
+  canvas.removeEventListener('mousedown', graphMouseDown);
+  canvas.removeEventListener('mousemove', graphMouseMove);
+  canvas.removeEventListener('mouseup', graphMouseUp);
+  canvas.addEventListener('mousedown', graphMouseDown);
+  canvas.addEventListener('mousemove', graphMouseMove);
+  canvas.addEventListener('mouseup', graphMouseUp);
+
+  if (graphAnim) cancelAnimationFrame(graphAnim);
+  graphLoop();
+}
+
+function graphMouseDown(e) {
+  const pos = graphPos(e);
+  for (const n of graphState.nodes) {
+    if (Math.hypot(n.x - pos.x, n.y - pos.y) < n.r + 8) {
+      graphState.dragging = n;
+      n.fixed = true;
+      return;
+    }
+  }
+}
+
+function graphMouseMove(e) {
+  const pos = graphPos(e);
+  if (graphState.dragging) {
+    graphState.dragging.x = pos.x;
+    graphState.dragging.y = pos.y;
+    graphState.dragging.vx = 0;
+    graphState.dragging.vy = 0;
+    return;
+  }
+  let hovered = null;
+  for (const n of graphState.nodes) {
+    if (Math.hypot(n.x - pos.x, n.y - pos.y) < n.r + 6) { hovered = n; break; }
+  }
+  graphState.hover = hovered;
+}
+
+function graphMouseUp() {
+  if (graphState.dragging) graphState.dragging.fixed = false;
+  graphState.dragging = null;
+}
+
+function graphPos(e) {
+  const rect = graphState.canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (graphState.width / rect.width),
+    y: (e.clientY - rect.top) * (graphState.height / rect.height)
+  };
+}
+
+function graphLoop() {
+  if (!graphState) return;
+  const { ctx, nodes, width, height } = graphState;
+
+  // Физика: отталкивание + притяжение по связям
+  const K = 0.02;
+  const REP = 6000;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d2 = dx * dx + dy * dy || 1;
+      const f = REP / d2;
+      const d = Math.sqrt(d2);
+      const fx = (dx / d) * f, fy = (dy / d) * f;
+      a.vx -= fx; a.vy -= fy;
+      b.vx += fx; b.vy += fy;
+    }
+  }
+
+  for (const l of LINKS) {
+    const a = nodes.find(n => n.id === l.a);
+    const b = nodes.find(n => n.id === l.b);
+    if (!a || !b) continue;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const target = 100;
+    const diff = (d - target) * 0.01;
+    const fx = (dx / d) * diff, fy = (dy / d) * diff;
+    a.vx += fx; a.vy += fy;
+    b.vx -= fx; b.vy -= fy;
+  }
+
+  // Центр
+  for (const n of nodes) {
+    if (n.fixed) continue;
+    n.vx += (width / 2 - n.x) * 0.0005;
+    n.vy += (height / 2 - n.y) * 0.0005;
+    n.vx *= 0.9; n.vy *= 0.9;
+    n.x += n.vx;
+    n.y += n.vy;
+    n.x = Math.max(20, Math.min(width - 20, n.x));
+    n.y = Math.max(20, Math.min(height - 20, n.y));
+  }
+
+  // Отрисовка
+  ctx.fillStyle = '#0d1410';
+  ctx.fillRect(0, 0, width, height);
+
+  // Связи
+  for (const l of LINKS) {
+    const a = nodes.find(n => n.id === l.a);
+    const b = nodes.find(n => n.id === l.b);
+    if (!a || !b) continue;
+    ctx.strokeStyle = LINK_COLORS[l.type] || '#555';
+    ctx.lineWidth = l.type === 'enemy' ? 2 : 1.5;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Узлы
+  for (const n of nodes) {
+    const color = FACTION_COLORS[n.faction] || '#888';
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = graphState.hover === n ? '#fff' : 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = graphState.hover === n ? 3 : 2;
+    ctx.stroke();
+
+    if (graphState.hover === n) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '13px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.callsign, n.x, n.y - n.r - 8);
+    }
+  }
+
+  // Тултип
+  if (graphState.hover) {
+    const n = graphState.hover;
+    const text = `${n.name} ("${n.callsign}")`;
+    ctx.font = '12px Courier New';
+    const w = ctx.measureText(text).width + 20;
+    const boxX = Math.min(n.x + 15, width - w - 10);
+    const boxY = n.y - 40;
+    ctx.fillStyle = 'rgba(26,29,22,0.95)';
+    ctx.strokeStyle = '#8a8a52';
+    ctx.lineWidth = 1;
+    ctx.fillRect(boxX, boxY, w, 24);
+    ctx.strokeRect(boxX, boxY, w, 24);
+    ctx.fillStyle = '#d4d6c8';
+    ctx.textAlign = 'left';
+    ctx.fillText(text, boxX + 10, boxY + 16);
+  }
+
+  graphAnim = requestAnimationFrame(graphLoop);
+}
+
+/* ============================================================
+   АДМИН-ПАНЕЛЬ
+   ============================================================ */
+document.querySelectorAll('[data-admin-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-admin-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const t = btn.dataset.adminTab;
+    document.getElementById('admin-users').style.display = t === 'users' ? 'block' : 'none';
+    document.getElementById('admin-content').style.display = t === 'content' ? 'block' : 'none';
+    document.getElementById('admin-logs').style.display = t === 'logs' ? 'block' : 'none';
+    if (t === 'logs') renderLogs();
+  });
+});
+
+function renderAdmin() {
+  const tbody = document.getElementById('adminUsersBody');
+  const users = Store.getUsers();
+  tbody.innerHTML = users.map(u => `
+    <tr data-callsign="${u.callsign}">
+      <td>"${u.callsign}"</td>
+      <td>
+        <select onchange="adminChangeFaction('${u.callsign}', this.value)">
+          ${Object.entries(FACTIONS).map(([k, v]) =>
+            `<option value="${k}" ${u.faction === k ? 'selected' : ''}>${v}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>
+        <select onchange="adminChangeRank('${u.callsign}', this.value)">
+          ${RANKS.map((r, i) =>
+            `<option value="${i}" ${u.rankIndex === i ? 'selected' : ''}>${r.name}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>
+        <input type="number" value="${u.xp}" style="width:80px"
+               onchange="adminChangeXP('${u.callsign}', this.value)">
+      </td>
+      <td>
+        <select onchange="adminChangeRole('${u.callsign}', this.value)">
+          <option value="fighter" ${u.role === 'fighter' ? 'selected' : ''}>Боец</option>
+          <option value="officer" ${u.role === 'officer' ? 'selected' : ''}>Офицер</option>
+          <option value="admin"   ${u.role === 'admin'   ? 'selected' : ''}>Админ</option>
+        </select>
+      </td>
+      <td class="admin-actions">
+        <button class="danger" onclick="adminDeleteUser('${u.callsign}')">УДАЛИТЬ</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.adminChangeFaction = function(callsign, faction) {
+  const u = Store.findUser(callsign); if (!u) return;
+  u.faction = faction; Store.saveUser(u);
+  Store.log('admin:change_faction', { callsign, faction });
+  toast('Подразделение обновлено', 'success');
+};
+
+window.adminChangeRank = function(callsign, idx) {
+  const u = Store.findUser(callsign); if (!u) return;
+  u.rankIndex = +idx; Store.saveUser(u);
+  Store.log('admin:change_rank', { callsign, rank: RANKS[idx].name });
+  toast('Звание обновлено', 'success');
+};
+
+window.adminChangeXP = function(callsign, xp) {
+  const u = Store.findUser(callsign); if (!u) return;
+  u.xp = +xp;
+  while (u.rankIndex < RANKS.length - 1 && u.xp >= RANKS[u.rankIndex + 1].xp) u.rankIndex++;
+  Store.saveUser(u);
+  Store.log('admin:change_xp', { callsign, xp: +xp });
+  toast('XP обновлён', 'success');
+};
+
+window.adminChangeRole = function(callsign, role) {
+  const u = Store.findUser(callsign); if (!u) return;
+  u.role = role; Store.saveUser(u);
+  Store.log('admin:change_role', { callsign, role });
+  toast('Роль обновлена', 'success');
+};
+
+window.adminDeleteUser = function(callsign) {
+  if (!confirm('Удалить бойца "' + callsign + '"?')) return;
+  const data = Store.load();
+  data.users = data.users.filter(u => u.callsign !== callsign);
+  Store.save(data);
+  Store.log('admin:delete_user', { callsign });
+  renderAdmin();
+  toast('Боец удалён', 'error');
+};
+
+document.getElementById('saveContentBtn').addEventListener('click', () => {
+  const type = document.getElementById('contentType').value;
+  const title = document.getElementById('contentTitle').value.trim();
+  const rawData = document.getElementById('contentData').value.trim();
+  if (!title) return toast('Укажите название', 'error');
+
+  let parsed = {};
+  try { parsed = rawData ? JSON.parse(rawData) : { text: rawData }; }
+  catch { parsed = { text: rawData }; }
+
+  const data = Store.load();
+  data.content = data.content || [];
+  data.content.push({
+    id: Date.now(), type, title, data: parsed,
+    updatedBy: currentUser.callsign,
+    updatedAt: new Date().toISOString()
+  });
+  Store.save(data);
+  Store.log('admin:add_content', { type, title });
+
+  document.getElementById('contentTitle').value = '';
+  document.getElementById('contentData').value = '';
+  toast('Контент добавлен', 'success');
+});
+
+function renderLogs() {
+  const data = Store.load();
+  const list = document.getElementById('logsList');
+  list.innerHTML = (data.logs || []).map(l => `
+    <li style="padding:0.4rem 0; border-bottom:1px solid var(--border)">
+      <span style="color:var(--scarlet)">[${new Date(l.time).toLocaleString('ru')}]</span>
+      <span style="color:var(--khaki)">${l.action}</span>
+      — ${l.user} ${JSON.stringify(l.details)}
+    </li>
+  `).join('') || '<li>Логов пока нет.</li>';
+}
+
+/* ============================================================
+   МОДАЛКА
+   ============================================================ */
+function openModal(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+function closeModal() {
+  if (sniperState) sniperState.running = false;
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+/* ============================================================
+   ТОСТ
+   ============================================================ */
+function toast(text, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+window.addEventListener('load', () => {
+  // Ничего не делаем — ждём логина
+});
+</script>
+
+</body>
+</html>
